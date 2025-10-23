@@ -19,41 +19,49 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+          REPO_NAME: ${{ github.event.repository.name }}
         run: |
           # Determine status and styling based on action
           if [ "$ACTION" = "closed" ]; then
             if [ "$MERGED" = "true" ]; then
-              STATUS="✅ Pull Request Merged"
+              TITLE="✅ [$REPO_NAME] Pull Request Merged"
+              STATUS="✅ Merged"
               COLOR=5763719
             else
-              STATUS="❌ Pull Request Closed"
+              TITLE="❌ [$REPO_NAME] Pull Request Closed"
+              STATUS="❌ Closed"
               COLOR=15548997
             fi
           elif [ "$ACTION" = "reopened" ]; then
-            STATUS="🔄 Pull Request Reopened"
+            TITLE="🔄 [$REPO_NAME] Pull Request Reopened"
+            STATUS="🔄 Reopened"
             COLOR=16776960
           elif [ "$ACTION" = "ready_for_review" ]; then
-            STATUS="👀 Ready for Review"
+            TITLE="👀 [$REPO_NAME] Ready for Review"
+            STATUS="👀 Ready"
             COLOR=15105570
           else
-            STATUS="🔔 New Pull Request"
+            TITLE="🔔 [$REPO_NAME] New Pull Request"
+            STATUS="🔔 New"
             COLOR=3447003
           fi
-          
+
           # Build Discord embed payload
           PAYLOAD=$(jq -n \
-            --arg status "$STATUS" \
-            --arg title "$PR_TITLE" \
+            --arg title "$TITLE" \
+            --arg prtitle "$PR_TITLE" \
             --arg url "$PR_URL" \
             --arg author "$PR_AUTHOR" \
             --arg branch "$PR_BRANCH" \
             --arg target "$TARGET_BRANCH" \
+            --arg status "$STATUS" \
+            --arg repo "$REPO_NAME" \
             --argjson color $COLOR \
             '{
-              content: $status,
+              content: ("**" + $title + "**"),
               embeds: [
                 {
-                  title: $title,
+                  title: ("[" + $repo + "] " + $prtitle),
                   url: $url,
                   color: $color,
                   fields: [
@@ -73,6 +81,7 @@ jobs:
                       inline: false
                     }
                   ],
+                  ],
                   footer: {
                     text: "GitHub Pull Request"
                   },
@@ -80,7 +89,7 @@ jobs:
                 }
               ]
             }')
-          
+
           curl -s -H "Content-Type: application/json" \
                -X POST \
                -d "$PAYLOAD" \
