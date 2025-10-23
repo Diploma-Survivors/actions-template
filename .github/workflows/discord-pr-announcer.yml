@@ -1,0 +1,66 @@
+name: Discord PR Announcer
+
+on:
+  workflow_call:
+    secrets:
+      DISCORD_WEBHOOK:
+        required: true
+
+jobs:
+  notify:
+    name: Send PR Notification to Discord
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Announce Pull Request Event
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ACTION: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          STATUS="🟦 PR Opened"
+          COLOR=3447003
+
+          if [ "$ACTION" = "closed" ]; then
+            if [ "$MERGED" = "true" ]; then
+              STATUS="🟩 PR Merged"
+              COLOR=5763719
+            else
+              STATUS="🟥 PR Closed"
+              COLOR=15548997
+            fi
+          elif [ "$ACTION" = "reopened" ]; then
+            STATUS="🟨 PR Reopened"
+            COLOR=16776960
+          elif [ "$ACTION" = "ready_for_review" ]; then
+            STATUS="🟧 PR Ready for Review"
+            COLOR=15105570
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg content "**$STATUS**" \
+            --arg title "$PR_TITLE" \
+            --arg url "$PR_URL" \
+            --arg author "$PR_AUTHOR" \
+            --arg branch "$PR_BRANCH" \
+            --argjson color $COLOR \
+            '{
+              content: $content,
+              embeds: [
+                {
+                  title: $title,
+                  url: $url,
+                  description: ("👤 Author: " + $author + "\n🌿 Branch: " + $branch),
+                  color: $color
+                }
+              ]
+            }')
+
+          curl -s -H "Content-Type: application/json" \
+               -X POST \
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK"
