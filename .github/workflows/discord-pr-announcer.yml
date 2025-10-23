@@ -39,7 +39,7 @@ jobs:
             STATUS="🔔 New Pull Request"
             COLOR=3447003
           fi
-
+          
           # Build Discord embed payload
           PAYLOAD=$(jq -n \
             --arg status "$STATUS" \
@@ -50,6 +50,7 @@ jobs:
             --arg target "$TARGET_BRANCH" \
             --argjson color $COLOR \
             '{
+              content: $status,
               embeds: [
                 {
                   title: $title,
@@ -79,7 +80,7 @@ jobs:
                 }
               ]
             }')
-
+          
           curl -s -H "Content-Type: application/json" \
                -X POST \
                -d "$PAYLOAD" \
