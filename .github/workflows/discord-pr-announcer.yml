@@ -21,7 +21,6 @@ jobs:
           TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
-          # Determine status and styling based on action
           if [ "$ACTION" = "closed" ]; then
             if [ "$MERGED" = "true" ]; then
               TITLE="✅ [$REPO_NAME] Pull Request Merged"
@@ -46,7 +45,6 @@ jobs:
             COLOR=3447003
           fi
 
-          # Build Discord embed payload
           PAYLOAD=$(jq -n \
             --arg title "$TITLE" \
             --arg prtitle "$PR_TITLE" \
@@ -80,7 +78,6 @@ jobs:
                       value: ("`" + $branch + "` → `" + $target + "`"),
                       inline: false
                     }
-                  ],
                   ],
                   footer: {
                     text: "GitHub Pull Request"
