@@ -1,16 +1,13 @@
 name: Discord PR Announcer
-
 on:
   workflow_call:
     secrets:
       DISCORD_WEBHOOK:
         required: true
-
 jobs:
   notify:
     name: Send PR Notification to Discord
     runs-on: ubuntu-latest
-
     steps:
       - name: Announce Pull Request Event
         env:
@@ -21,41 +18,64 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
         run: |
-          STATUS="🟦 PR Opened"
-          COLOR=3447003
-
+          # Determine status and styling based on action
           if [ "$ACTION" = "closed" ]; then
             if [ "$MERGED" = "true" ]; then
-              STATUS="🟩 PR Merged"
+              STATUS="✅ Pull Request Merged"
               COLOR=5763719
             else
-              STATUS="🟥 PR Closed"
+              STATUS="❌ Pull Request Closed"
               COLOR=15548997
             fi
           elif [ "$ACTION" = "reopened" ]; then
-            STATUS="🟨 PR Reopened"
+            STATUS="🔄 Pull Request Reopened"
             COLOR=16776960
           elif [ "$ACTION" = "ready_for_review" ]; then
-            STATUS="🟧 PR Ready for Review"
+            STATUS="👀 Ready for Review"
             COLOR=15105570
+          else
+            STATUS="🔔 New Pull Request"
+            COLOR=3447003
           fi
 
+          # Build Discord embed payload
           PAYLOAD=$(jq -n \
-            --arg content "**$STATUS**" \
+            --arg status "$STATUS" \
             --arg title "$PR_TITLE" \
             --arg url "$PR_URL" \
             --arg author "$PR_AUTHOR" \
             --arg branch "$PR_BRANCH" \
+            --arg target "$TARGET_BRANCH" \
             --argjson color $COLOR \
             '{
-              content: $content,
               embeds: [
                 {
                   title: $title,
                   url: $url,
-                  description: ("👤 Author: " + $author + "\n🌿 Branch: " + $branch),
-                  color: $color
+                  color: $color,
+                  fields: [
+                    {
+                      name: "Author",
+                      value: $author,
+                      inline: true
+                    },
+                    {
+                      name: "Status",
+                      value: $status,
+                      inline: true
+                    },
+                    {
+                      name: "Branches",
+                      value: ("`" + $branch + "` → `" + $target + "`"),
+                      inline: false
+                    }
+                  ],
+                  footer: {
+                    text: "GitHub Pull Request"
+                  },
+                  timestamp: (now | todate)
                 }
               ]
             }')
